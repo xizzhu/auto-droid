@@ -22,13 +22,10 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -62,32 +59,10 @@ public final class AutoValueSharedPreferencesExtension extends AutoValueExtensio
         final TypeSpec subclass = TypeSpec.classBuilder(className)
                 .addModifiers(isFinal ? Modifier.FINAL : Modifier.ABSTRACT)
                 .superclass(ClassName.get(packageName, classToExtend))
-                .addMethod(generateConstructor(properties))
+                .addMethod(Utils.generateConstructor(properties))
                 .addMethod(generateFactoryMethod(context, properties))
                 .build();
         return JavaFile.builder(packageName, subclass).build().toString();
-    }
-
-    private static MethodSpec generateConstructor(Map<String, ExecutableElement> properties) {
-        final List<ParameterSpec> params = new ArrayList<>();
-        for (Map.Entry<String, ExecutableElement> entry : properties.entrySet()) {
-            final TypeName typeName = TypeName.get(entry.getValue().getReturnType());
-            params.add(ParameterSpec.builder(typeName, entry.getKey()).build());
-        }
-
-        final StringBuilder body = new StringBuilder("super(");
-        for (int i = properties.size(); i > 0; --i) {
-            body.append("$N, ");
-        }
-        if (properties.size() > 0) {
-            body.setLength(body.length() - 2); // removes the last ", "
-        }
-        body.append(")");
-
-        return MethodSpec.constructorBuilder()
-                .addParameters(params)
-                .addStatement(body.toString(), properties.keySet().toArray())
-                .build();
     }
 
     private static MethodSpec generateFactoryMethod(Context context, Map<String, ExecutableElement> properties) {

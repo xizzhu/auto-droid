@@ -4,6 +4,7 @@
 
 An extension for Google's [AutoValue](https://github.com/google/auto/tree/master/value) that generates the following for for `@AutoValue` annotated objects:
 - `createFromSharedPreferences(SharedPreferences sharedPreferences)`
+- Parcelable implementations if the class `implements Parcelable`
 
 ## Download
 Add the following to your `build.gradle`:
