@@ -103,30 +103,56 @@ public final class AutoValueSharedPreferencesExtension extends AutoValueExtensio
             final ExecutableElement element = entry.getValue();
             final TypeName typeName = TypeName.get(element.getReturnType());
             final SharedPreference sharedPreference = element.getAnnotation(SharedPreference.class);
-            final String key = sharedPreference != null ? sharedPreference.key() : "";
-            final String defaultValue = sharedPreference != null ? sharedPreference.defaultValue() : "";
-
-            if (typeName.equals(TypeName.BOOLEAN) || typeName.equals(TypeName.BOOLEAN.box())) {
-                factoryMethod.addStatement("boolean $N = sharedPreferences.getBoolean($S, $L)",
-                        name, key, Boolean.parseBoolean(defaultValue));
-            } else if (typeName.equals(TypeName.FLOAT) || typeName.equals(TypeName.FLOAT.box())) {
-                factoryMethod.addStatement("float $N = sharedPreferences.getFloat($S, $LF)", name,
-                        key, Float.parseFloat(defaultValue));
-            } else if (typeName.equals(TypeName.INT) || typeName.equals(TypeName.INT.box())) {
-                factoryMethod.addStatement("int $N = sharedPreferences.getInt($S, $L)", name, key,
-                        Integer.parseInt(defaultValue));
-            } else if (typeName.equals(TypeName.LONG) || typeName.equals(TypeName.LONG.box())) {
-                factoryMethod.addStatement("long $N = sharedPreferences.getLong($S, $LL)", name,
-                        key, Long.parseLong(defaultValue));
-            } else if (typeName.equals(TypeName.get(String.class))) {
-                factoryMethod.addStatement("String $N = sharedPreferences.getString($S, $S)", name,
-                        key, defaultValue);
-            } else if (typeName.equals(ParameterizedTypeName.get(ClassName.get("java.util", "Set"),
-                    TypeName.get(String.class)))) {
-                factoryMethod.addStatement(
-                        "Set<String> $N = sharedPreferences.getStringSet($S, null)", name, key);
+            if (sharedPreference == null) {
+                // not annotated, use default value
+                if (typeName.equals(TypeName.BOOLEAN) || typeName.equals(TypeName.BOOLEAN.box())) {
+                    factoryMethod.addStatement("boolean $N = false", name);
+                } else if (typeName.equals(TypeName.FLOAT) || typeName.equals(TypeName.FLOAT.box())) {
+                    factoryMethod.addStatement("float $N = 0.0F", name);
+                } else if (typeName.equals(TypeName.INT) || typeName.equals(TypeName.INT.box())) {
+                    factoryMethod.addStatement("int $N = 0", name);
+                } else if (typeName.equals(TypeName.LONG) || typeName.equals(TypeName.LONG.box())) {
+                    factoryMethod.addStatement("long $N = 0L", name);
+                } else {
+                    factoryMethod.addStatement("$T $N = null", typeName, name);
+                }
             } else {
-                // TODO support other types
+                final String key = sharedPreference.key();
+                String defaultValue = sharedPreference.defaultValue();
+                if (typeName.equals(TypeName.BOOLEAN) || typeName.equals(TypeName.BOOLEAN.box())) {
+                    if ("".equals(defaultValue)) {
+                        defaultValue = "false";
+                    }
+                    factoryMethod.addStatement("boolean $N = sharedPreferences.getBoolean($S, $L)",
+                            name, key, Boolean.parseBoolean(defaultValue));
+                } else if (typeName.equals(TypeName.FLOAT) || typeName.equals(TypeName.FLOAT.box())) {
+                    if ("".equals(defaultValue)) {
+                        defaultValue = "0.0F";
+                    }
+                    factoryMethod.addStatement("float $N = sharedPreferences.getFloat($S, $LF)", name,
+                            key, Float.parseFloat(defaultValue));
+                } else if (typeName.equals(TypeName.INT) || typeName.equals(TypeName.INT.box())) {
+                    if ("".equals(defaultValue)) {
+                        defaultValue = "0";
+                    }
+                    factoryMethod.addStatement("int $N = sharedPreferences.getInt($S, $L)", name, key,
+                            Integer.parseInt(defaultValue));
+                } else if (typeName.equals(TypeName.LONG) || typeName.equals(TypeName.LONG.box())) {
+                    if ("".equals(defaultValue)) {
+                        defaultValue = "0";
+                    }
+                    factoryMethod.addStatement("long $N = sharedPreferences.getLong($S, $LL)", name,
+                            key, Long.parseLong(defaultValue));
+                } else if (typeName.equals(TypeName.get(String.class))) {
+                    factoryMethod.addStatement("String $N = sharedPreferences.getString($S, $S)", name,
+                            key, defaultValue);
+                } else if (typeName.equals(ParameterizedTypeName.get(ClassName.get("java.util", "Set"),
+                        TypeName.get(String.class)))) {
+                    factoryMethod.addStatement(
+                            "Set<String> $N = sharedPreferences.getStringSet($S, null)", name, key);
+                } else {
+                    // TODO support other types
+                }
             }
         }
 

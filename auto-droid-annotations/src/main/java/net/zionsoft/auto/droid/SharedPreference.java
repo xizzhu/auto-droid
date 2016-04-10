@@ -26,5 +26,5 @@ import java.lang.annotation.Target;
 public @interface SharedPreference {
     String key();
 
-    String defaultValue();
+    String defaultValue() default "";
 }
