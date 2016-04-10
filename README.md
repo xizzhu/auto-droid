@@ -6,9 +6,27 @@ An extension for Google's [AutoValue](https://github.com/google/auto/tree/master
 - `createFromSharedPreferences(SharedPreferences sharedPreferences)`
 
 ## Download
+Add the following to your `build.gradle`:
+```gradle
+buildscript {
+    dependencies {
+        classpath 'com.neenbedankt.gradle.plugins:android-apt:1.8'
+    }
+}
+
+repositories {
+    maven { url "https://jitpack.io" }
+}
+
+apply plugin: 'com.neenbedankt.android-apt'
+
+dependencies {
+    compile 'com.github.xizzhu.auto-droid:auto-droid-annotations:-SNAPSHOT'
+    apt 'com.github.xizzhu.auto-droid:auto-droid-processors:-SNAPSHOT'
+}
+```
 
 ## Usage
-
 ```java
 // annotate your AutoValue objects as usual
 @AutoValue
