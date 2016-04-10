@@ -1,5 +1,10 @@
 # AutoValue Extension for Android
 
+An extension for Google's [AutoValue](https://github.com/google/auto/tree/master/value) that generates the following for for `@AutoValue` annotated objects:
+- `createFromSharedPreferences(SharedPreferences sharedPreferences)`
+
+[![Build Status](https://api.travis-ci.org/xizzhu/simple-tool-tip.svg?branch=master)](https://travis-ci.org/xizzhu/auto-droid)
+
 ## License
 
 ```
