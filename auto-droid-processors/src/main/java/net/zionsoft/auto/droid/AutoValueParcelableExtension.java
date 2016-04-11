@@ -35,6 +35,7 @@ import java.util.Set;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 @AutoService(AutoValueExtension.class)
@@ -42,12 +43,15 @@ public class AutoValueParcelableExtension extends AutoValueExtension {
     @Override
     public boolean applicable(Context context) {
         final ProcessingEnvironment processingEnvironment = context.processingEnvironment();
-        final TypeMirror parcelableType = processingEnvironment
+        final TypeElement parcelableType = processingEnvironment
                 .getElementUtils()
-                .getTypeElement("android.os.Parcelable")
-                .asType();
+                .getTypeElement("android.os.Parcelable");
+        if (parcelableType == null) {
+            return false;
+        }
+        final TypeMirror parcelableTypeMirror = parcelableType.asType();
         final TypeMirror autoValueClass = context.autoValueClass().asType();
-        return processingEnvironment.getTypeUtils().isAssignable(autoValueClass, parcelableType);
+        return processingEnvironment.getTypeUtils().isAssignable(autoValueClass, parcelableTypeMirror);
     }
 
     @Override
@@ -80,7 +84,7 @@ public class AutoValueParcelableExtension extends AutoValueExtension {
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class)
                 .returns(TypeName.INT)
-                .addCode("return 0;")
+                .addStatement("return $L", 0)
                 .build();
     }
 
