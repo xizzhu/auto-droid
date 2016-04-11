@@ -16,6 +16,7 @@
 
 package net.zionsoft.auto.droid;
 
+import com.google.auto.value.extension.AutoValueExtension;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
@@ -25,9 +26,31 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 
 class Utils {
+    static boolean containsAnnotation(AutoValueExtension.Context context, Class annotation) {
+        final TypeElement typeElement = context.processingEnvironment()
+                .getElementUtils()
+                .getTypeElement(annotation.getName());
+        if (typeElement == null) {
+            return false;
+        }
+        final TypeMirror annotationType = typeElement.asType();
+        for (ExecutableElement element : context.properties().values()) {
+            for (AnnotationMirror annotationMirror : element.getAnnotationMirrors()) {
+                if (annotationMirror.getAnnotationType().equals(annotationType)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     static MethodSpec generateConstructor(Map<String, ExecutableElement> properties) {
         final List<ParameterSpec> params = new ArrayList<>();
         for (Map.Entry<String, ExecutableElement> entry : properties.entrySet()) {

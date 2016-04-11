@@ -27,28 +27,14 @@ import com.squareup.javapoet.TypeSpec;
 
 import java.util.Map;
 
-import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
-import javax.lang.model.type.TypeMirror;
 
 @AutoService(AutoValueExtension.class)
 public class AutoValueCursorExtension extends AutoValueExtension {
     @Override
     public boolean applicable(Context context) {
-        final TypeMirror annotationType = context.processingEnvironment()
-                .getElementUtils()
-                .getTypeElement(ColumnName.class.getName())
-                .asType();
-        for (ExecutableElement element : context.properties().values()) {
-            for (AnnotationMirror annotation : element.getAnnotationMirrors()) {
-                if (annotation.getAnnotationType().equals(annotationType)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return Utils.containsAnnotation(context, ColumnName.class);
     }
 
     @Override
