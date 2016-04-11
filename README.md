@@ -29,6 +29,8 @@ dependencies {
 ```
 
 ## Usage
+
+### From shared preference
 ```java
 // annotate your AutoValue objects as usual
 @AutoValue
@@ -53,6 +55,8 @@ For objects constructed from shared preferences, the following types are support
 - `String`: the default value is `null` if not specified
 - `Set<String>`: the default value is always `null`
 
+### From cursor
+
 ```java
 // annotate your AutoValue objects as usual
 @AutoValue
@@ -76,6 +80,17 @@ For objects constructed from cursors, the following types are supported:
 - `double` / `Double`
 - `byte[]` / `Byte[]`
 - `String`
+
+### Implements parcelable
+
+```java
+// annotate your AutoValue objects as usual
+// and just tells that it impements Parcelable
+@AutoValue
+public abstract class MyCursor implements Parcelable {
+    // whatever you may have here
+}
+```
 
 ## License
 
