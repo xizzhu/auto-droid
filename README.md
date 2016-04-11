@@ -4,6 +4,7 @@
 
 An extension for Google's [AutoValue](https://github.com/google/auto/tree/master/value) that generates the following for for `@AutoValue` annotated objects:
 - `createFromSharedPreferences(SharedPreferences sharedPreferences)`
+- `createFromCursor(Cursor cursor)`
 - Parcelable implementations if the class `implements Parcelable`
 
 ## Download
@@ -51,6 +52,30 @@ For objects constructed from shared preferences, the following types are support
 - `double` / `Double`: the default value is `0.0` if not specified
 - `String`: the default value is `null` if not specified
 - `Set<String>`: the default value is always `null`
+
+```java
+// annotate your AutoValue objects as usual
+@AutoValue
+public abstract class MyCursor {
+    // indicate that the factory will retrieve the value from cursor
+    @ColumnName("keyOfMyInt")
+    abstract int myIntFromPreference();
+
+    // adds the factory method
+    public static MyPreference create(Cursor cursor) {
+        return AutoValue_MyPreference.createFromCursor(cursor);
+    }
+}
+```
+
+For objects constructed from cursors, the following types are supported:
+- `int` / `Integer`
+- `long` / `Long`
+- `short` / `Short`
+- `float` / `Float`
+- `double` / `Double`
+- `byte[]` / `Byte[]`
+- `String`
 
 ## License
 
