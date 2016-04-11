@@ -16,6 +16,7 @@
 
 package net.zionsoft.auto.droid;
 
+import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.TypeName;
@@ -46,6 +47,21 @@ class Utils {
         return MethodSpec.constructorBuilder()
                 .addParameters(params)
                 .addStatement(body.toString(), properties.keySet().toArray())
+                .build();
+    }
+
+    static CodeBlock generateObjectConstruction(String className, Map<String, ExecutableElement> properties) {
+        final Object[] propertyNames = properties.keySet().toArray();
+        final StringBuilder construct = new StringBuilder("new ").append(className).append("(");
+        for (int i = propertyNames.length; i > 0; --i) {
+            construct.append("$N, ");
+        }
+        if (propertyNames.length > 0) {
+            construct.setLength(construct.length() - 2); // removes the trailing ", "
+        }
+        construct.append(")");
+        return CodeBlock.builder()
+                .addStatement(construct.toString(), propertyNames)
                 .build();
     }
 }

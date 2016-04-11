@@ -21,7 +21,6 @@ import com.google.auto.value.extension.AutoValueExtension;
 import com.google.common.collect.Sets;
 import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
@@ -138,17 +137,8 @@ public class AutoValueParcelableExtension extends AutoValueExtension {
             createFromParcelBuilder.addStatement("$T $N = ($T) in.readValue(classLoader)", typeName, name, typeName);
         }
 
-        final Object[] propertyNames = properties.keySet().toArray();
-        final StringBuilder construct = new StringBuilder("new ").append(className).append("(");
-        for (int i = propertyNames.length; i > 0; --i) {
-            construct.append("$N, ");
-        }
-        if (propertyNames.length > 0) {
-            construct.setLength(construct.length() - 2); // removes the trailing ", "
-        }
-        construct.append(")");
         createFromParcelBuilder.addCode("return ")
-                .addCode(CodeBlock.builder().addStatement(construct.toString(), propertyNames).build());
+                .addCode(Utils.generateObjectConstruction(className, properties));
 
         return createFromParcelBuilder.build();
     }

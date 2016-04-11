@@ -20,7 +20,6 @@ import com.google.auto.service.AutoService;
 import com.google.auto.value.extension.AutoValueExtension;
 import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeName;
@@ -124,17 +123,8 @@ public class AutoValueCursorExtension extends AutoValueExtension {
             }
         }
 
-        final Object[] propertyNames = properties.keySet().toArray();
-        final StringBuilder construct = new StringBuilder("new ").append(classSimpleName).append("(");
-        for (int i = propertyNames.length; i > 0; --i) {
-            construct.append("$N, ");
-        }
-        if (propertyNames.length > 0) {
-            construct.setLength(construct.length() - 2); // removes the trailing ", "
-        }
-        construct.append(")");
         factoryMethod.addCode("return ")
-                .addCode(CodeBlock.builder().addStatement(construct.toString(), propertyNames).build());
+                .addCode(Utils.generateObjectConstruction(classSimpleName, properties));
 
         return factoryMethod.build();
     }
