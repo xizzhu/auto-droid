@@ -65,7 +65,7 @@ public class AutoValueCursorExtension extends AutoValueExtension {
             final ColumnName columnName = element.getAnnotation(ColumnName.class);
             if (columnName == null) {
                 // not annotated, use default value
-                if (typeName.equals(ArrayTypeName.of(TypeName.BYTE)) || typeName.equals(ArrayTypeName.of(TypeName.BYTE.box()))) {
+                if (typeName.equals(ArrayTypeName.of(TypeName.BYTE))) {
                     factoryMethod.addStatement("byte[] $N = null", name);
                 } else if (typeName.equals(TypeName.DOUBLE) || typeName.equals(TypeName.DOUBLE.box())) {
                     factoryMethod.addStatement("double $N = 0.0", name);
@@ -82,7 +82,7 @@ public class AutoValueCursorExtension extends AutoValueExtension {
                 }
             } else {
                 final String key = columnName.value();
-                if (typeName.equals(ArrayTypeName.of(TypeName.BYTE)) || typeName.equals(ArrayTypeName.of(TypeName.BYTE.box()))) {
+                if (typeName.equals(ArrayTypeName.of(TypeName.BYTE))) {
                     factoryMethod.addStatement("byte[] $N = cursor.getBlob(cursor.getColumnIndexOrThrow($S))",
                             name, key);
                 } else if (typeName.equals(TypeName.DOUBLE) || typeName.equals(TypeName.DOUBLE.box())) {

@@ -78,7 +78,7 @@ For objects constructed from cursors, the following types are supported:
 - `short` / `Short`
 - `float` / `Float`
 - `double` / `Double`
-- `byte[]` / `Byte[]`
+- `byte[]`
 - `String`
 
 ### Implements parcelable
