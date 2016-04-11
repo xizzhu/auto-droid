@@ -23,8 +23,8 @@ repositories {
 apply plugin: 'com.neenbedankt.android-apt'
 
 dependencies {
-    compile 'com.github.xizzhu.auto-droid:auto-droid-annotations:-SNAPSHOT'
-    apt 'com.github.xizzhu.auto-droid:auto-droid-processors:-SNAPSHOT'
+    compile 'com.github.xizzhu.auto-droid:auto-droid-annotations:0.1'
+    apt 'com.github.xizzhu.auto-droid:auto-droid-processors:0.1'
 }
 ```
 
