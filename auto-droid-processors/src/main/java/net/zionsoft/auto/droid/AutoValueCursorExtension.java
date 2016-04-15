@@ -22,32 +22,80 @@ import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 
 @AutoService(AutoValueExtension.class)
 public class AutoValueCursorExtension extends AutoValueExtension {
+    private static final TypeName CONTENT_VALUES = ClassName.get("android.content", "ContentValues");
+
     @Override
     public boolean applicable(Context context) {
         return Utils.containsAnnotation(context, ColumnName.class);
     }
 
     @Override
+    public Set<String> consumeProperties(Context context) {
+        final ExecutableElement method = findToContentValues(context.autoValueClass());
+        if (method != null) {
+            return Collections.singleton(method.getSimpleName().toString());
+        }
+        return super.consumeProperties(context);
+    }
+
+    private static ExecutableElement findToContentValues(TypeElement cls) {
+        for (Element element : cls.getEnclosedElements()) {
+            if (element.getKind() != ElementKind.METHOD) {
+                continue;
+            }
+
+            final ExecutableElement executableElement = (ExecutableElement) element;
+            if (!CONTENT_VALUES.equals(ClassName.get(executableElement.getReturnType()))) {
+                continue;
+            }
+
+            final List<? extends VariableElement> parameters = executableElement.getParameters();
+            switch (parameters.size()) {
+                case 0:
+                    return executableElement;
+                case 1:
+                    if (CONTENT_VALUES.equals(ClassName.get(parameters.get(0).asType()))) {
+                        return executableElement;
+                    }
+                    break;
+            }
+        }
+        return null;
+    }
+
+    @Override
     public String generateClass(Context context, String className, String classToExtend, boolean isFinal) {
         final String packageName = context.packageName();
         final Map<String, ExecutableElement> properties = context.properties();
-        final TypeSpec subclass = TypeSpec.classBuilder(className)
+        final TypeSpec.Builder builder = TypeSpec.classBuilder(className)
                 .addModifiers(isFinal ? Modifier.FINAL : Modifier.ABSTRACT)
                 .superclass(ClassName.get(packageName, classToExtend))
                 .addMethod(Utils.generateConstructor(properties))
-                .addMethod(generateFactoryMethod(context, properties))
-                .build();
-        return JavaFile.builder(packageName, subclass).build().toString();
+                .addMethod(generateFactoryMethod(context, properties));
+        final MethodSpec toContentValuesMethod = generateToContentValuesMethod(context, properties);
+        if (toContentValuesMethod != null) {
+            builder.addMethod(toContentValuesMethod);
+        }
+        return JavaFile.builder(packageName, builder.build()).build().toString();
     }
 
     private static MethodSpec generateFactoryMethod(Context context, Map<String, ExecutableElement> properties) {
@@ -113,5 +161,51 @@ public class AutoValueCursorExtension extends AutoValueExtension {
                 .addCode(Utils.generateObjectConstruction(classSimpleName, properties));
 
         return factoryMethod.build();
+    }
+
+    private static MethodSpec generateToContentValuesMethod(Context context, Map<String, ExecutableElement> properties) {
+        final ExecutableElement toContentValuesElement = findToContentValues(context.autoValueClass());
+        if (toContentValuesElement == null) {
+            return null;
+        }
+
+        final MethodSpec.Builder toContentValuesMethod = MethodSpec.methodBuilder(
+                toContentValuesElement.getSimpleName().toString())
+                .addAnnotation(Override.class)
+                .returns(CONTENT_VALUES);
+
+        final Set<Modifier> modifiers = new HashSet<>(toContentValuesElement.getModifiers());
+        modifiers.remove(Modifier.ABSTRACT);
+        toContentValuesMethod.addModifiers(modifiers);
+
+        int annotatedProperties = 0;
+        for (Map.Entry<String, ExecutableElement> entry : properties.entrySet()) {
+            if (entry.getValue().getAnnotation(ColumnName.class) != null) {
+                ++annotatedProperties;
+            }
+        }
+
+        final List<? extends VariableElement> parameters = toContentValuesElement.getParameters();
+        if (parameters.size() == 1 && CONTENT_VALUES.equals(ClassName.get(parameters.get(0).asType()))) {
+            toContentValuesMethod.addParameter(ParameterSpec.builder(CONTENT_VALUES, "contentValues").build());
+            toContentValuesMethod.beginControlFlow("if (contentValues == null)")
+                    .addStatement("contentValues = new $T($L)", CONTENT_VALUES, annotatedProperties)
+                    .endControlFlow();
+        } else {
+            toContentValuesMethod.addStatement("$T contentValues = new $T($L)",
+                    CONTENT_VALUES, CONTENT_VALUES, annotatedProperties);
+        }
+
+        for (Map.Entry<String, ExecutableElement> entry : properties.entrySet()) {
+            final ColumnName columnName = entry.getValue().getAnnotation(ColumnName.class);
+            if (columnName == null) {
+                continue;
+            }
+            toContentValuesMethod.addStatement("contentValues.put($S, $L())",
+                    columnName.value(), entry.getKey());
+        }
+        toContentValuesMethod.addStatement("return contentValues");
+
+        return toContentValuesMethod.build();
     }
 }

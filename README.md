@@ -65,6 +65,9 @@ public abstract class MyCursor {
     @ColumnName("keyOfMyInt")
     abstract int myIntFromPreference();
 
+    // indicate to implement a method to create a ContentValues object with values put in
+    abstract ContentValues toContentValues();
+
     // adds the factory method
     public static MyPreference create(Cursor cursor) {
         return AutoValue_MyPreference.createFromCursor(cursor);
