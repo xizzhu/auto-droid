@@ -69,6 +69,26 @@ public class AutoValueSharedPreferencesExtensionTest {
     }
 
     @Test
+    public void unsupportedType() {
+        final JavaFileObject source = JavaFileObjects.forSourceString("net.zionsoft.auto.droid.test.UnsupportedTypeTest", ""
+                + "package net.zionsoft.auto.droid.test;\n"
+                + "import android.content.SharedPreferences;\n"
+                + "import com.google.auto.value.AutoValue;\n"
+                + "import net.zionsoft.auto.droid.SharedPreference;\n"
+                + "import java.util.Map;\n"
+                + "@AutoValue\n"
+                + "public abstract class UnsupportedTypeTest {\n"
+                + "    @SharedPreference(key = \"unsupported_type\", defaultValue = \"\")\n"
+                + "    abstract Map unsupported();\n"
+                + "}\n");
+
+        Truth.assertAbout(JavaSourcesSubjectFactory.javaSources())
+                .that(Collections.singletonList(source))
+                .processedWith(new AutoValueProcessor())
+                .failsToCompile();
+    }
+
+    @Test
     public void allTypes() {
         final JavaFileObject source = JavaFileObjects.forSourceString("net.zionsoft.auto.droid.test.AllTypesTest", ""
                 + "package net.zionsoft.auto.droid.test;\n"

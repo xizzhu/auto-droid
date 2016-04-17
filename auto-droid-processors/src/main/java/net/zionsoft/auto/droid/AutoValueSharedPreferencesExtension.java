@@ -29,6 +29,7 @@ import java.util.Map;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.tools.Diagnostic;
 
 @AutoService(AutoValueExtension.class)
 public final class AutoValueSharedPreferencesExtension extends AutoValueExtension {
@@ -111,7 +112,8 @@ public final class AutoValueSharedPreferencesExtension extends AutoValueExtensio
                     factoryMethod.addStatement(
                             "Set<String> $N = sharedPreferences.getStringSet($S, null)", name, key);
                 } else {
-                    // TODO support other types
+                    context.processingEnvironment().getMessager().printMessage(Diagnostic.Kind.ERROR,
+                            "Unsupported type: " + typeName.toString(), context.autoValueClass());
                 }
             }
         }
