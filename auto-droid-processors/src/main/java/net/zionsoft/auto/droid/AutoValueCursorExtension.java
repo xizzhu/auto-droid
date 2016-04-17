@@ -32,20 +32,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
+import javax.tools.Diagnostic;
 
 @AutoService(AutoValueExtension.class)
 public class AutoValueCursorExtension extends AutoValueExtension {
     private static final TypeName CONTENT_VALUES = ClassName.get("android.content", "ContentValues");
+    private static final TypeName CURSOR_VALUES = ClassName.get("android.database", "Cursor");
 
     @Override
     public boolean applicable(Context context) {
-        return Utils.containsAnnotation(context, ColumnName.class);
+        return Utils.containsAnnotation(context, ColumnName.class)
+                || Utils.containsAnnotation(context, ColumnAdapter.class);
     }
 
     @Override
@@ -110,6 +116,28 @@ public class AutoValueCursorExtension extends AutoValueExtension {
             final String name = entry.getKey();
             final ExecutableElement element = entry.getValue();
             final TypeName typeName = TypeName.get(element.getReturnType());
+            if (element.getAnnotation(ColumnAdapter.class) != null) {
+                final TypeMirror adapterType = findAdapterType(context, element);
+                if (adapterType == null) {
+                    context.processingEnvironment().getMessager().printMessage(Diagnostic.Kind.ERROR,
+                            "Failed to find adapter type: " + element.getAnnotation(ColumnAdapter.class).value(),
+                            context.autoValueClass());
+                }
+
+                final ExecutableElement adapterFactoryMethod = findAdapterFactoryMethod(context, element);
+                if (adapterFactoryMethod == null) {
+                    context.processingEnvironment().getMessager().printMessage(Diagnostic.Kind.ERROR,
+                            String.format("Adapter class `%s` needs to implements a `static` method" +
+                                            " taking a `Cursor` and returning `%s`",
+                                    element.getAnnotation(ColumnAdapter.class).value(), element.getReturnType()),
+                            context.autoValueClass());
+                }
+                factoryMethod.addStatement("$T $N = $T.$N(cursor)", typeName, name, adapterType,
+                        adapterFactoryMethod.getSimpleName().toString());
+
+                continue;
+            }
+
             final ColumnName columnName = element.getAnnotation(ColumnName.class);
             if (columnName == null) {
                 // not annotated, use default value
@@ -152,7 +180,8 @@ public class AutoValueCursorExtension extends AutoValueExtension {
                     factoryMethod.addStatement("String $N = cursor.getString(cursor.getColumnIndexOrThrow($S))",
                             name, key);
                 } else {
-                    // TODO support other types
+                    context.processingEnvironment().getMessager().printMessage(Diagnostic.Kind.ERROR,
+                            "Unsupported type: " + typeName.toString(), context.autoValueClass());
                 }
             }
         }
@@ -161,6 +190,79 @@ public class AutoValueCursorExtension extends AutoValueExtension {
                 .addCode(Utils.generateObjectConstruction(classSimpleName, properties));
 
         return factoryMethod.build();
+    }
+
+    private static TypeMirror findAdapterType(Context context, ExecutableElement element) {
+        final String className = ColumnAdapter.class.getName();
+        AnnotationMirror annotationMirror = null;
+        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
+            if (mirror.getAnnotationType().toString().equals(className)) {
+                annotationMirror = mirror;
+                break;
+            }
+        }
+        if (annotationMirror == null) {
+            return null;
+        }
+
+        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry
+                : annotationMirror.getElementValues().entrySet()) {
+            if (entry.getKey().getSimpleName().toString().equals("value")) {
+                return (TypeMirror) entry.getValue().getValue();
+            }
+        }
+
+        return null;
+    }
+
+    private static ExecutableElement findAdapterFactoryMethod(Context context, ExecutableElement element) {
+        final String className = ColumnAdapter.class.getName();
+        AnnotationMirror annotationMirror = null;
+        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
+            if (mirror.getAnnotationType().toString().equals(className)) {
+                annotationMirror = mirror;
+                break;
+            }
+        }
+        if (annotationMirror == null) {
+            return null;
+        }
+
+        TypeMirror factoryTypeMirror = null;
+        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry
+                : annotationMirror.getElementValues().entrySet()) {
+            if (entry.getKey().getSimpleName().toString().equals("value")) {
+                factoryTypeMirror = (TypeMirror) entry.getValue().getValue();
+                break;
+            }
+        }
+        if (factoryTypeMirror == null) {
+            return null;
+        }
+
+        final TypeName factoryTypeName = TypeName.get(factoryTypeMirror);
+        final TypeElement factoryType = (TypeElement) context.processingEnvironment()
+                .getTypeUtils().asElement(factoryTypeMirror);
+        for (Element e : factoryType.getEnclosedElements()) {
+            if (e.getKind() != ElementKind.METHOD) {
+                continue;
+            }
+            if (!e.getModifiers().contains(Modifier.STATIC)) {
+                continue;
+            }
+
+            final ExecutableElement executableElement = (ExecutableElement) e;
+
+            if (!factoryTypeName.equals(ClassName.get(executableElement.getReturnType()))) {
+                continue;
+            }
+
+            final List<? extends VariableElement> parameters = executableElement.getParameters();
+            if (parameters.size() == 1 && CURSOR_VALUES.equals(ClassName.get(parameters.get(0).asType()))) {
+                return executableElement;
+            }
+        }
+        return null;
     }
 
     private static MethodSpec generateToContentValuesMethod(Context context, Map<String, ExecutableElement> properties) {

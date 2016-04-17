@@ -23,6 +23,7 @@ import com.google.testing.compile.JavaSourcesSubjectFactory;
 
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Collections;
 
 import javax.tools.JavaFileObject;
@@ -290,6 +291,107 @@ public class AutoValueCursorExtensionTest {
 
         Truth.assertAbout(JavaSourcesSubjectFactory.javaSources())
                 .that(Collections.singletonList(source))
+                .processedWith(new AutoValueProcessor())
+                .compilesWithoutError()
+                .and()
+                .generatesSources(expected);
+    }
+
+    @Test
+    public void missingColumnAdapterAnnotation() {
+        final JavaFileObject source = JavaFileObjects.forSourceString("net.zionsoft.auto.droid.test.MissingColumnAdapterAnnotationTest", ""
+                + "package net.zionsoft.auto.droid.test;\n"
+                + "import android.database.Cursor;\n"
+                + "import com.google.auto.value.AutoValue;\n"
+                + "import net.zionsoft.auto.droid.ColumnName;\n"
+                + "import java.util.Map;\n"
+                + "@AutoValue\n"
+                + "public abstract class MissingColumnAdapterAnnotationTest {\n"
+                + "    @ColumnName(\"missing_adapter\")\n"
+                + "    abstract Map missingAdapter();\n"
+                + "}\n");
+
+        Truth.assertAbout(JavaSourcesSubjectFactory.javaSources())
+                .that(Collections.singletonList(source))
+                .processedWith(new AutoValueProcessor())
+                .failsToCompile();
+    }
+
+    @Test
+    public void missingColumnAdapterMethod() {
+        final JavaFileObject columnAdapter = JavaFileObjects.forSourceString("net.zionsoft.auto.droid.test.CustomColumnAdapter", ""
+                + "package net.zionsoft.auto.droid.test;\n"
+                + "public class CustomColumnAdapter {\n"
+                + "}\n");
+
+        final JavaFileObject columnAdapterClient = JavaFileObjects.forSourceString("net.zionsoft.auto.droid.test.ColumnAdapterClient", ""
+                + "package net.zionsoft.auto.droid.test;\n"
+                + "import android.database.Cursor;\n"
+                + "import com.google.auto.value.AutoValue;\n"
+                + "import net.zionsoft.auto.droid.ColumnAdapter;\n"
+                + "import net.zionsoft.auto.droid.ColumnName;\n"
+                + "@AutoValue\n"
+                + "public abstract class ColumnAdapterClient {\n"
+                + "    @ColumnAdapter(CustomColumnAdapter.class)\n"
+                + "    abstract CustomColumnAdapter anAdapter();\n"
+                + "public static ColumnAdapterClient create(Cursor cursor) {\n"
+                + "        return AutoValue_ColumnAdapterClient.createFromCursor(cursor);\n"
+                + "    }\n"
+                + "}\n");
+
+        Truth.assertAbout(JavaSourcesSubjectFactory.javaSources())
+                .that(Arrays.asList(columnAdapter, columnAdapterClient))
+                .processedWith(new AutoValueProcessor())
+                .failsToCompile();
+    }
+
+    @Test
+    public void columnAdapter() {
+        final JavaFileObject columnAdapter = JavaFileObjects.forSourceString("net.zionsoft.auto.droid.test.CustomColumnAdapter", ""
+                + "package net.zionsoft.auto.droid.test;\n"
+                + "import android.database.Cursor;\n"
+                + "public class CustomColumnAdapter {\n"
+                + "  public static CustomColumnAdapter fromCursor2() { return null; }\n"
+                + "  public static void fromCursor3(Cursor cursor) {}\n"
+                + "  public CustomColumnAdapter fromCursor4() { return null; }\n"
+                + "  public static CustomColumnAdapter fromCursor5(int anInt) { return null; }\n"
+                + "  public static CustomColumnAdapter fromCursor(Cursor cursor) { return null; }\n"
+                + "}\n");
+
+        final JavaFileObject columnAdapterClient = JavaFileObjects.forSourceString("net.zionsoft.auto.droid.test.ColumnAdapterClient", ""
+                + "package net.zionsoft.auto.droid.test;\n"
+                + "import android.database.Cursor;\n"
+                + "import com.google.auto.value.AutoValue;\n"
+                + "import net.zionsoft.auto.droid.ColumnAdapter;\n"
+                + "import net.zionsoft.auto.droid.ColumnName;\n"
+                + "import java.util.Map;\n"
+                + "@AutoValue\n"
+                + "public abstract class ColumnAdapterClient {\n"
+                + "    @ColumnAdapter(CustomColumnAdapter.class)\n"
+                + "    abstract CustomColumnAdapter anAdapter();\n"
+                + "public static ColumnAdapterClient create(Cursor cursor) {\n"
+                + "        return AutoValue_ColumnAdapterClient.createFromCursor(cursor);\n"
+                + "    }\n"
+                + "}\n");
+
+        final JavaFileObject expected = JavaFileObjects.forSourceString("net.zionsoft.auto.droid.test.AutoValue_ColumnAdapterClient", ""
+                + "package net.zionsoft.auto.droid.test;\n"
+                + "\n"
+                + "import android.database.Cursor;\n"
+                + "\n"
+                + "final class AutoValue_ColumnAdapterClient extends $AutoValue_ColumnAdapterClient {\n"
+                + "  AutoValue_SmokeTest(CustomColumnAdapter anAdapter) {\n"
+                + "    super(anAdapter);\n"
+                + "  }\n"
+                + "\n"
+                + "  static AutoValue_ColumnAdapterClient createFromCursor(Cursor cursor) {\n"
+                + "    CustomColumnAdapter anAdapter = CustomColumnAdapter.fromCursor(cursor);\n"
+                + "    return new AutoValue_ColumnAdapterClient(anAdapter);\n"
+                + "  }\n"
+                + "}\n");
+
+        Truth.assertAbout(JavaSourcesSubjectFactory.javaSources())
+                .that(Arrays.asList(columnAdapter, columnAdapterClient))
                 .processedWith(new AutoValueProcessor())
                 .compilesWithoutError()
                 .and()

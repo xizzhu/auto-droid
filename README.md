@@ -63,7 +63,13 @@ For objects constructed from shared preferences, the following types are support
 public abstract class MyCursor {
     // indicate that the factory will retrieve the value from cursor
     @ColumnName("keyOfMyInt")
-    abstract int myIntFromPreference();
+    abstract int myIntFromCursor();
+
+    // indicate to use MyColumnAdapterFactory to generate the value
+    // MyColumnAdapterFactory must provide a `static` method that
+    // takes a `Cursor` and returns a `MyColumnAdapter`
+    @ColumnAdapter(MyColumnAdapterFactory.class)
+    abstract MyColumnAdapter myCustomColumn();
 
     // indicate to implement a method to create a ContentValues object with values put in
     abstract ContentValues toContentValues();
