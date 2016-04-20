@@ -117,7 +117,7 @@ public class AutoValueCursorExtension extends AutoValueExtension {
             final ExecutableElement element = entry.getValue();
             final TypeName typeName = TypeName.get(element.getReturnType());
             if (element.getAnnotation(ColumnAdapter.class) != null) {
-                final TypeMirror adapterType = findAdapterType(context, element);
+                final TypeMirror adapterType = findAdapterType(element);
                 if (adapterType == null) {
                     context.processingEnvironment().getMessager().printMessage(Diagnostic.Kind.ERROR,
                             "Failed to find adapter type: " + element.getAnnotation(ColumnAdapter.class).value(),
@@ -192,7 +192,7 @@ public class AutoValueCursorExtension extends AutoValueExtension {
         return factoryMethod.build();
     }
 
-    private static TypeMirror findAdapterType(Context context, ExecutableElement element) {
+    private static TypeMirror findAdapterType(ExecutableElement element) {
         final String className = ColumnAdapter.class.getName();
         AnnotationMirror annotationMirror = null;
         for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
