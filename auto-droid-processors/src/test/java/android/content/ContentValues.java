@@ -46,4 +46,7 @@ public class ContentValues {
 
     public void put(String key, Boolean value) {
     }
+
+    public void putAll(ContentValues other) {
+    }
 }

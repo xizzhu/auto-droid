@@ -116,21 +116,24 @@ public class AutoValueCursorExtension extends AutoValueExtension {
             final String name = entry.getKey();
             final ExecutableElement element = entry.getValue();
             final TypeName typeName = TypeName.get(element.getReturnType());
-            if (element.getAnnotation(ColumnAdapter.class) != null) {
+
+            final ColumnAdapter columnAdapter = element.getAnnotation(ColumnAdapter.class);
+            if (columnAdapter != null) {
                 final TypeMirror adapterType = findAdapterType(element);
                 if (adapterType == null) {
                     context.processingEnvironment().getMessager().printMessage(Diagnostic.Kind.ERROR,
-                            "Failed to find adapter type: " + element.getAnnotation(ColumnAdapter.class).value(),
+                            "Failed to find adapter type: " + columnAdapter.value(),
                             context.autoValueClass());
                 }
 
-                final ExecutableElement adapterFactoryMethod = findAdapterFactoryMethod(context, element);
+                final ExecutableElement adapterFactoryMethod = findAdapterFactoryMethod(context, adapterType);
                 if (adapterFactoryMethod == null) {
                     context.processingEnvironment().getMessager().printMessage(Diagnostic.Kind.ERROR,
                             String.format("Adapter class `%s` needs to implements a `static` method" +
                                             " taking a `Cursor` and returning `%s`",
-                                    element.getAnnotation(ColumnAdapter.class).value(), element.getReturnType()),
+                                    columnAdapter.value(), element.getReturnType()),
                             context.autoValueClass());
+                    continue;
                 }
                 factoryMethod.addStatement("$T $N = $T.$N(cursor)", typeName, name, adapterType,
                         adapterFactoryMethod.getSimpleName().toString());
@@ -215,34 +218,10 @@ public class AutoValueCursorExtension extends AutoValueExtension {
         return null;
     }
 
-    private static ExecutableElement findAdapterFactoryMethod(Context context, ExecutableElement element) {
-        final String className = ColumnAdapter.class.getName();
-        AnnotationMirror annotationMirror = null;
-        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
-            if (mirror.getAnnotationType().toString().equals(className)) {
-                annotationMirror = mirror;
-                break;
-            }
-        }
-        if (annotationMirror == null) {
-            return null;
-        }
-
-        TypeMirror factoryTypeMirror = null;
-        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry
-                : annotationMirror.getElementValues().entrySet()) {
-            if (entry.getKey().getSimpleName().toString().equals("value")) {
-                factoryTypeMirror = (TypeMirror) entry.getValue().getValue();
-                break;
-            }
-        }
-        if (factoryTypeMirror == null) {
-            return null;
-        }
-
-        final TypeName factoryTypeName = TypeName.get(factoryTypeMirror);
+    private static ExecutableElement findAdapterFactoryMethod(Context context, TypeMirror type) {
+        final TypeName factoryTypeName = TypeName.get(type);
         final TypeElement factoryType = (TypeElement) context.processingEnvironment()
-                .getTypeUtils().asElement(factoryTypeMirror);
+                .getTypeUtils().asElement(type);
         for (Element e : factoryType.getEnclosedElements()) {
             if (e.getKind() != ElementKind.METHOD) {
                 continue;
@@ -299,15 +278,74 @@ public class AutoValueCursorExtension extends AutoValueExtension {
         }
 
         for (Map.Entry<String, ExecutableElement> entry : properties.entrySet()) {
-            final ColumnName columnName = entry.getValue().getAnnotation(ColumnName.class);
-            if (columnName == null) {
+            final ExecutableElement element = entry.getValue();
+
+            final ColumnAdapter columnAdapter = element.getAnnotation(ColumnAdapter.class);
+            if (columnAdapter != null) {
+                final TypeMirror adapterType = findAdapterType(element);
+                if (adapterType == null) {
+                    context.processingEnvironment().getMessager().printMessage(Diagnostic.Kind.ERROR,
+                            "Failed to find adapter type: " + columnAdapter.value(),
+                            context.autoValueClass());
+                }
+
+                final ExecutableElement adapterToContentValuesMethod
+                        = findAdapterToContentValuesMethod(context, adapterType);
+                if (adapterToContentValuesMethod == null) {
+                    context.processingEnvironment().getMessager().printMessage(Diagnostic.Kind.ERROR,
+                            String.format("Adapter class `%s` needs to implements a method" +
+                                            " taking an optional `ContentValues` and returning `ContentValues`",
+                                    columnAdapter.value()),
+                            context.autoValueClass());
+                    continue;
+                }
+
+                if (adapterToContentValuesMethod.getParameters().size() == 0) {
+                    toContentValuesMethod.addStatement("contentValues.putAll($L().$N())",
+                            entry.getKey(), adapterToContentValuesMethod.getSimpleName().toString());
+                } else {
+                    toContentValuesMethod.addStatement("$L().$N(contentValues)",
+                            entry.getKey(), adapterToContentValuesMethod.getSimpleName().toString());
+                }
+
                 continue;
             }
-            toContentValuesMethod.addStatement("contentValues.put($S, $L())",
-                    columnName.value(), entry.getKey());
+
+            final ColumnName columnName = element.getAnnotation(ColumnName.class);
+            if (columnName != null) {
+                toContentValuesMethod.addStatement("contentValues.put($S, $L())",
+                        columnName.value(), entry.getKey());
+            }
         }
         toContentValuesMethod.addStatement("return contentValues");
 
         return toContentValuesMethod.build();
+    }
+
+    private static ExecutableElement findAdapterToContentValuesMethod(Context context, TypeMirror type) {
+        final TypeElement factoryType = (TypeElement) context.processingEnvironment()
+                .getTypeUtils().asElement(type);
+        for (Element e : factoryType.getEnclosedElements()) {
+            if (e.getKind() != ElementKind.METHOD) {
+                continue;
+            }
+            if (e.getModifiers().contains(Modifier.STATIC)) {
+                continue;
+            }
+
+            final ExecutableElement executableElement = (ExecutableElement) e;
+
+            if (!CONTENT_VALUES.equals(ClassName.get(executableElement.getReturnType()))) {
+                continue;
+            }
+
+            final List<? extends VariableElement> parameters = executableElement.getParameters();
+            final int size = parameters.size();
+            if (size == 0
+                    || (size == 1 && CONTENT_VALUES.equals(ClassName.get(parameters.get(0).asType())))) {
+                return executableElement;
+            }
+        }
+        return null;
     }
 }
