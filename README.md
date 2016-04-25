@@ -75,8 +75,8 @@ public abstract class MyCursor {
     abstract ContentValues toContentValues();
 
     // adds the factory method
-    public static MyPreference create(Cursor cursor) {
-        return AutoValue_MyPreference.createFromCursor(cursor);
+    public static MyCursor create(Cursor cursor) {
+        return AutoValue_MyCursor.createFromCursor(cursor);
     }
 }
 ```
