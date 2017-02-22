@@ -55,12 +55,12 @@ public class AutoValueCursorExtension extends AutoValueExtension {
     }
 
     @Override
-    public Set<String> consumeProperties(Context context) {
+    public Set<ExecutableElement> consumeMethods(Context context) {
         final ExecutableElement method = findToContentValues(context.autoValueClass());
         if (method != null) {
-            return Collections.singleton(method.getSimpleName().toString());
+            return Collections.singleton(method);
         }
-        return super.consumeProperties(context);
+        return super.consumeMethods(context);
     }
 
     private static ExecutableElement findToContentValues(TypeElement cls) {
