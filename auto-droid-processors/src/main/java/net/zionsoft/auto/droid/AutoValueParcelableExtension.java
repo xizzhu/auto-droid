@@ -60,7 +60,7 @@ public class AutoValueParcelableExtension extends AutoValueExtension {
 
     @Override
     public Set<String> consumeProperties(Context context) {
-        return Sets.newHashSet("describeContents", "writeToParcel");
+        return Sets.newHashSet("describeContents");
     }
 
     @Override
